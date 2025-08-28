@@ -17,6 +17,6 @@ ENV \
   MARIADB_NAME=ole \
   MARIADB_PORT=3306 \
   OLE_GATE_URLS= \
-  SCRAPE_INTERVAL=300
+  SCRAPE_INTERVAL=3600
 
 CMD ["python", "gate_counter.py"]
