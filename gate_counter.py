@@ -22,7 +22,7 @@ DB_CONFIG = {
     "port": int(os.getenv("MARIADB_PORT", "3306")),
 }
 
-GATE_URLS = os.getenv("GATE_URLS").split(",")
+GATE_URLS = os.getenv("OLE_GATE_URLS").split(",")
 SCRAPE_INTERVAL = int(os.getenv("SCRAPE_INTERVAL", "300"))
 
 
