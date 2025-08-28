@@ -12,11 +12,11 @@ RUN useradd --create-home --shell /bin/bash app && chown -R app:app /app
 USER app
 
 ENV \
+  TZ=America/New_York \
   MARIADB_HOST=mariadb \
   MARIADB_USER=ole \
   MARIADB_NAME=ole \
   MARIADB_PORT=3306 \
-  OLE_GATE_URLS= \
-  SCRAPE_INTERVAL=3600
+  OLE_GATE_URLS=
 
 CMD ["python", "gate_counter.py"]

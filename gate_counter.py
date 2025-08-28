@@ -7,7 +7,11 @@ import pymysql
 import logging
 import sys
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 logger = logging.getLogger(__name__)
 
 if os.getenv("GATE_URLS") == "":
@@ -23,20 +27,20 @@ DB_CONFIG = {
 }
 
 GATE_URLS = os.getenv("OLE_GATE_URLS").split(",")
-SCRAPE_INTERVAL = int(os.getenv("SCRAPE_INTERVAL", "300"))
 
 
 def get_db_connection():
-    return pymysql.connect(**DB_CONFIG)
+    return pymysql.connect(charset="utf8mb4", use_unicode=True, **DB_CONFIG)
 
 
 def get_last_count(gate_name):
     with get_db_connection() as conn:
         cursor = conn.cursor(pymysql.cursors.DictCursor)
         cursor.execute(
-            "SELECT * FROM lib_gate_counts WHERE gate_name=%s ORDER BY timestamp DESC LIMIT 1",
+            "SELECT * FROM lib_gate_counts WHERE gate_name = %s ORDER BY timestamp DESC LIMIT 1",
             (gate_name,),
         )
+
         return cursor.fetchone()
 
 
@@ -92,7 +96,6 @@ def update_gate_count(gate_url, gate_name):
             incoming_diff = incoming - last["incoming_patrons_count"]
             outgoing_diff = outgoing - last["outgoing_patrons_count"]
 
-        # Insert record
         insert_count(
             timestamp,
             gate_name,
@@ -112,25 +115,36 @@ def update_gate_count(gate_url, gate_name):
         logger.error(f"Error processing {gate_name}: {e}")
 
 
+def record_gate_counts():
+    for i, url in enumerate(GATE_URLS):
+        url = url.strip()
+        gate_name = (
+            "FM South gate"
+            if "south" in url
+            else "FM West gate" if "west" in url else f"Gate {i+1}"
+        )
+        update_gate_count(url, gate_name)
+
+
 def main():
-    logger.info(f"Starting with {len(GATE_URLS)} gates, interval {SCRAPE_INTERVAL}s")
+    logger.info(f"Starting with {len(GATE_URLS)} gates")
 
     while True:
+        now = datetime.datetime.now()
+        s = 3600 - (now.minute * 60 + now.second)
+        logger.info(f"Waiting {s} seconds until top of the hour...")
+        time.sleep(s)
+
         try:
-            for i, url in enumerate(GATE_URLS):
-                gate_name = (
-                    "FM South gate"
-                    if "south" in url.lower()
-                    else "FM West gate" if "west" in url.lower() else f"Gate {i+1}"
-                )
-                update_gate_count(url.strip(), gate_name)
-
-            time.sleep(SCRAPE_INTERVAL)
-
+            record_gate_counts()
         except KeyboardInterrupt:
             logger.info("Exiting...")
             break
 
 
 if __name__ == "__main__":
-    main()
+    run_once = len(sys.argv) > 1 and sys.argv[1] == "--once"
+    if run_once:
+        record_gate_counts()
+    else:
+        main()
