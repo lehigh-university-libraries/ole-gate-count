@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gate Count Query Interface</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        select, input[type="date"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        .date-range {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+        .btn-secondary {
+            background-color: #28a745;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #1e7e34;
+        }
+        .btn-secondary:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        .loading {
+            text-align: center;
+            margin: 20px 0;
+            color: #666;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 12px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        .results-info {
+            margin: 20px 0;
+            padding: 10px;
+            background-color: #d4edda;
+            color: #155724;
+            border-radius: 4px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: white;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            color: #495057;
+        }
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        .table-container {
+            max-height: 600px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Gate Count Query Interface</h1>
+        
+        <form id="queryForm">
+            <div class="form-group">
+                <label for="gate_name">Gate Name:</label>
+                <select id="gate_name" name="gate_name">
+                    <option value="all">All Gates</option>
+                    {% for gate in gate_names %}
+                    <option value="{{ gate }}">{{ gate }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="date-range">
+                <div class="form-group">
+                    <label for="start_date">Start Date:</label>
+                    <input type="date" id="start_date" name="start_date">
+                </div>
+                
+                <div class="form-group">
+                    <label for="end_date">End Date:</label>
+                    <input type="date" id="end_date" name="end_date">
+                </div>
+            </div>
+            
+            <div class="button-group">
+                <button type="submit" class="btn-primary">Query Data</button>
+                <button type="button" id="downloadCsv" class="btn-secondary" disabled>Download CSV</button>
+            </div>
+        </form>
+        
+        <div id="loading" class="loading" style="display: none;">
+            Loading results...
+        </div>
+        
+        <div id="error" class="error" style="display: none;"></div>
+        
+        <div id="resultsInfo" class="results-info" style="display: none;"></div>
+        
+        <div id="results" style="display: none;">
+            <div class="table-container">
+                <table id="resultsTable">
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Gate Name</th>
+                            <th>Alarm Count</th>
+                            <th>Alarm Diff</th>
+                            <th>Incoming Count</th>
+                            <th>Incoming Diff</th>
+                            <th>Outgoing Count</th>
+                            <th>Outgoing Diff</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const queryForm = document.getElementById('queryForm');
+        const loading = document.getElementById('loading');
+        const error = document.getElementById('error');
+        const results = document.getElementById('results');
+        const resultsInfo = document.getElementById('resultsInfo');
+        const resultsTable = document.getElementById('resultsTable').getElementsByTagName('tbody')[0];
+        const downloadCsv = document.getElementById('downloadCsv');
+        
+        let currentQueryData = null;
+
+        queryForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = {
+                gate_name: document.getElementById('gate_name').value,
+                start_date: document.getElementById('start_date').value,
+                end_date: document.getElementById('end_date').value
+            };
+            
+            currentQueryData = formData;
+            
+            // Show loading, hide others
+            loading.style.display = 'block';
+            error.style.display = 'none';
+            results.style.display = 'none';
+            resultsInfo.style.display = 'none';
+            downloadCsv.disabled = true;
+            
+            try {
+                const response = await fetch('{{ url_for("main.query_data") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayResults(data.data, data.count);
+                } else {
+                    showError(data.error);
+                }
+            } catch (err) {
+                showError('Network error: ' + err.message);
+            } finally {
+                loading.style.display = 'none';
+            }
+        });
+
+        downloadCsv.addEventListener('click', async () => {
+            if (!currentQueryData) return;
+            
+            try {
+                const response = await fetch('{{ url_for("main.download_csv") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(currentQueryData)
+                });
+                
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = response.headers.get('Content-Disposition').split('filename=')[1];
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                } else {
+                    showError('Failed to download CSV');
+                }
+            } catch (err) {
+                showError('Download error: ' + err.message);
+            }
+        });
+
+        function displayResults(data, count) {
+            // Clear previous results
+            resultsTable.innerHTML = '';
+            
+            // Show results info
+            resultsInfo.textContent = `Found ${count} records`;
+            resultsInfo.style.display = 'block';
+            
+            // Populate table
+            data.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${row.timestamp}</td>
+                    <td>${row.gate_name}</td>
+                    <td>${row.alarm_count}</td>
+                    <td>${row.alarm_diff}</td>
+                    <td>${row.incoming_patrons_count}</td>
+                    <td>${row.incoming_diff}</td>
+                    <td>${row.outgoing_patrons_count}</td>
+                    <td>${row.outgoing_diff}</td>
+                `;
+                resultsTable.appendChild(tr);
+            });
+            
+            results.style.display = 'block';
+            downloadCsv.disabled = false;
+        }
+
+        function showError(message) {
+            error.textContent = message;
+            error.style.display = 'block';
+        }
+    </script>
+</body>
+</html>
