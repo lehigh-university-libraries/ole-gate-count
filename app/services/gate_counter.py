@@ -6,6 +6,7 @@ import logging
 import os
 from datetime import datetime
 from ..models.database import GateCountModel
+from ..utils.process_lock import process_lock
 
 logger = logging.getLogger(__name__)
 
@@ -69,10 +70,16 @@ class GateCounterService:
                 time.sleep(60)  # Wait a minute before retrying
 
     def _record_gate_counts(self):
-        """Record counts for all configured gates"""
-        for i, url in enumerate(self.gate_urls):
-            gate_name = self._get_gate_name(url, i)
-            self._update_gate_count(url, gate_name)
+        """Record counts for all configured gates (with process locking)"""
+        try:
+            with process_lock("gate_counter_hourly"):
+                logger.info("Acquired gate counter lock - recording counts...")
+                for i, url in enumerate(self.gate_urls):
+                    gate_name = self._get_gate_name(url, i)
+                    self._update_gate_count(url, gate_name)
+                logger.info("Gate counting completed successfully")
+        except RuntimeError:
+            logger.info("Another worker is already recording gate counts - skipping")
 
     def _get_gate_name(self, url, index):
         """Determine gate name based on URL or index"""
@@ -136,4 +143,14 @@ class GateCounterService:
             return
 
         logger.info("Recording gate counts manually...")
-        self._record_gate_counts()
+        try:
+            with process_lock("gate_counter_manual"):
+                logger.info("Acquired manual gate counter lock...")
+                for i, url in enumerate(self.gate_urls):
+                    gate_name = self._get_gate_name(url, i)
+                    self._update_gate_count(url, gate_name)
+                logger.info("Manual gate counting completed successfully")
+        except RuntimeError:
+            logger.warning(
+                "Could not acquire lock for manual gate counting - another process may be running"
+            )
