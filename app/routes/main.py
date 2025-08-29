@@ -22,8 +22,9 @@ def query_data():
         gate_name = data.get("gate_name")
         start_date = data.get("start_date")
         end_date = data.get("end_date")
+        order_by = data.get("order_by", "asc")
 
-        results = GateCountModel.query_counts(gate_name, start_date, end_date)
+        results = GateCountModel.query_counts(gate_name, start_date, end_date, order_by)
 
         return jsonify({"success": True, "data": results, "count": len(results)})
 
@@ -39,8 +40,9 @@ def download_csv():
         gate_name = data.get("gate_name")
         start_date = data.get("start_date")
         end_date = data.get("end_date")
+        order_by = data.get("order_by", "asc")
 
-        results = GateCountModel.query_counts(gate_name, start_date, end_date)
+        results = GateCountModel.query_counts(gate_name, start_date, end_date, order_by)
 
         # Create CSV in memory
         output = io.StringIO()

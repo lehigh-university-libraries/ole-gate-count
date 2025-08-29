@@ -74,7 +74,7 @@ class GateCountModel:
             conn.commit()
 
     @staticmethod
-    def query_counts(gate_name=None, start_date=None, end_date=None):
+    def query_counts(gate_name=None, start_date=None, end_date=None, order_by="asc"):
         """Query gate counts with optional filters"""
         sql = "SELECT * FROM lib_gate_counts WHERE 1=1"
         params = []
@@ -91,7 +91,9 @@ class GateCountModel:
             sql += " AND timestamp <= %s"
             params.append(end_date)
 
-        sql += " ORDER BY timestamp DESC"
+        # Add order by clause with direction
+        order_direction = "ASC" if order_by == "asc" else "DESC"
+        sql += f" ORDER BY timestamp {order_direction}"
 
         with get_db_connection() as conn:
             cursor = conn.cursor(pymysql.cursors.DictCursor)
