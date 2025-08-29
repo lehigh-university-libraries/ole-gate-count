@@ -15,6 +15,7 @@ WORKDIR /app
 
 RUN adduser -D -s /bin/sh app
 COPY --from=builder /app/ole-gate-count ./
+COPY templates/ ./templates/
 COPY --chown=app:app . .
 
 USER app
