@@ -10,7 +10,22 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o ole-gate-count main.go
 
 FROM alpine:3.22
 
-RUN apk --no-cache add ca-certificates curl tzdata jq
+ARG \
+  # renovate: datasource=repology depName=alpine_3_22/ca-certificates
+  CA_CERTIFICATES_VERSION="20250619-r0" \
+  # renovate: datasource=repology depName=alpine_3_22/curl
+  CURL_VERSION="8.14.1-r1" \
+  # renovate: datasource=repology depName=alpine_3_22/jq
+  JQ_VERSION="1.8.0-r0" \
+  # renovate: datasource=repology depName=alpine_3_22/tzdata
+  TZDATA_VERSION="2025b-r0"
+
+RUN apk update && \
+  apk --no-cache add \
+    ca-certificates=="${CA_CERTIFICATES_VERSION}" \
+    curl=="${CURL_VERSION}" \
+    tzdata=="${TZDATA_VERSION}" \
+    jq=="${JQ_VERSION}"
 WORKDIR /app
 
 RUN adduser -D -s /bin/sh app
