@@ -148,12 +148,14 @@ func (app *App) handleHealth(w http.ResponseWriter, r *http.Request) {
 	// Check database connection
 	if err := app.db.Ping(); err != nil {
 		w.WriteHeader(http.StatusServiceUnavailable)
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		if err := json.NewEncoder(w).Encode(map[string]interface{}{
 			"status":   "unhealthy",
 			"service":  "ole-gate-count",
 			"database": "disconnected",
 			"error":    err.Error(),
-		})
+		}); err != nil {
+			slog.Error("Failed to encode JSON response", "error", err)
+		}
 		return
 	}
 
@@ -170,12 +172,14 @@ func (app *App) handleHealth(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		w.WriteHeader(http.StatusServiceUnavailable)
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		if err := json.NewEncoder(w).Encode(map[string]interface{}{
 			"status":   "unhealthy",
 			"service":  "ole-gate-count",
 			"database": "error",
 			"error":    err.Error(),
-		})
+		}); err != nil {
+			slog.Error("Failed to encode JSON response", "error", err)
+		}
 		return
 	}
 
@@ -202,7 +206,9 @@ func (app *App) handleHealth(w http.ResponseWriter, r *http.Request) {
 		response["latest_entry"] = nil
 	}
 
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		slog.Error("Failed to encode JSON response", "error", err)
+	}
 }
 
 func (app *App) handleIndex(w http.ResponseWriter, r *http.Request) {
@@ -311,7 +317,10 @@ func (app *App) handleDownloadCSV(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
 
 	// Write CSV header
-	w.Write([]byte("timestamp,gate_name,alarm_count,alarm_diff,incoming_patrons_count,incoming_diff,outgoing_patrons_count,outgoing_diff\n"))
+	if _, err := w.Write([]byte("timestamp,gate_name,alarm_count,alarm_diff,incoming_patrons_count,incoming_diff,outgoing_patrons_count,outgoing_diff\n")); err != nil {
+		slog.Error("Failed to write CSV header", "error", err)
+		return
+	}
 
 	// Write CSV data
 	for _, record := range results {
@@ -325,7 +334,10 @@ func (app *App) handleDownloadCSV(w http.ResponseWriter, r *http.Request) {
 			record.OutgoingPatronsCount,
 			record.OutgoingDiff,
 		)
-		w.Write([]byte(line))
+		if _, err := w.Write([]byte(line)); err != nil {
+			slog.Error("Failed to write CSV line", "error", err)
+			return
+		}
 	}
 }
 
