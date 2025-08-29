@@ -97,7 +97,7 @@ func main() {
 
 func NewApp() (*App, error) {
 	// Database connection
-	dbConfig := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true",
+	dbConfig := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true&loc=Local",
 		getEnv("MARIADB_USER", "ole"),
 		getDBPassword(),
 		getEnv("MARIADB_HOST", "mariadb"),
