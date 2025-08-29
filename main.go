@@ -273,19 +273,23 @@ func (app *App) handleQuery(w http.ResponseWriter, r *http.Request) {
 	results, err := app.queryGateCounts(req.GateName, req.StartDate, req.EndDate, req.OrderBy)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		if err := json.NewEncoder(w).Encode(map[string]interface{}{
 			"success": false,
 			"error":   err.Error(),
-		})
+		}); err != nil {
+			slog.Error("Failed to encode JSON response", "error", err)
+		}
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
 		"data":    results,
 		"count":   len(results),
-	})
+	}); err != nil {
+		slog.Error("Failed to encode JSON response", "error", err)
+	}
 }
 
 func (app *App) handleDownloadCSV(w http.ResponseWriter, r *http.Request) {
