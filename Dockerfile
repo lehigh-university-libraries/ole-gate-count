@@ -8,7 +8,7 @@ RUN go mod download
 COPY main.go ./
 RUN CGO_ENABLED=0 GOOS=linux go build -o ole-gate-count main.go
 
-FROM alpine:latest
+FROM alpine:3.22
 
 RUN apk --no-cache add ca-certificates curl tzdata jq
 WORKDIR /app

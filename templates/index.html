@@ -207,13 +207,29 @@
 
       let currentQueryData = null;
 
+      // Set default dates
+      const today = new Date();
+      const thirtyDaysAgo = new Date(today.getTime() - (30 * 24 * 60 * 60 * 1000));
+      
+      document.getElementById("start_date").value = thirtyDaysAgo.toISOString().split('T')[0];
+      document.getElementById("end_date").value = today.toISOString().split('T')[0];
+
       queryForm.addEventListener("submit", async (e) => {
         e.preventDefault();
 
+        const startDate = document.getElementById("start_date").value;
+        const endDate = document.getElementById("end_date").value;
+
+        // Validate dates
+        if (startDate && endDate && new Date(startDate) >= new Date(endDate)) {
+          showError("End date must be after start date");
+          return;
+        }
+
         const formData = {
           gate_name: document.getElementById("gate_name").value,
-          start_date: document.getElementById("start_date").value,
-          end_date: document.getElementById("end_date").value,
+          start_date: startDate,
+          end_date: endDate,
           order_by: document.getElementById("order_by").value,
         };
 

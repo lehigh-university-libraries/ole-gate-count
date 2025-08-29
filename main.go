@@ -16,40 +16,6 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-type statusRecorder struct {
-	http.ResponseWriter
-	statusCode int
-}
-
-func (r *statusRecorder) WriteHeader(statusCode int) {
-	r.statusCode = statusCode
-	r.ResponseWriter.WriteHeader(statusCode)
-}
-
-func LoggingMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.Contains(r.URL.Path, "/health") {
-			next.ServeHTTP(w, r)
-			return
-		}
-
-		start := time.Now()
-		statusWriter := &statusRecorder{
-			ResponseWriter: w,
-			statusCode:     http.StatusOK,
-		}
-		next.ServeHTTP(statusWriter, r)
-		duration := time.Since(start)
-		slog.Info(r.Method,
-			"path", r.URL.Path,
-			"status", statusWriter.statusCode,
-			"duration", duration,
-			"client_ip", r.RemoteAddr,
-			"user_agent", r.UserAgent(),
-		)
-	})
-}
-
 type GateCount struct {
 	Timestamp            time.Time `json:"timestamp"`
 	GateName             string    `json:"gate_name"`
@@ -374,12 +340,12 @@ func (app *App) queryGateCounts(gateName, startDate, endDate, orderBy string) ([
 
 	if startDate != "" {
 		query += " AND timestamp >= ?"
-		args = append(args, startDate)
+		args = append(args, startDate+" 00:00:00")
 	}
 
 	if endDate != "" {
 		query += " AND timestamp <= ?"
-		args = append(args, endDate)
+		args = append(args, endDate+" 23:59:59")
 	}
 
 	// Add order by clause
@@ -539,4 +505,38 @@ func (app *App) insertCount(timestamp time.Time, gateName string, alarmCount, al
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 	`, timestamp, gateName, alarmCount, alarmDiff, incoming, incomingDiff, outgoing, outgoingDiff)
 	return err
+}
+
+type statusRecorder struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+func (r *statusRecorder) WriteHeader(statusCode int) {
+	r.statusCode = statusCode
+	r.ResponseWriter.WriteHeader(statusCode)
+}
+
+func LoggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "/health") {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		start := time.Now()
+		statusWriter := &statusRecorder{
+			ResponseWriter: w,
+			statusCode:     http.StatusOK,
+		}
+		next.ServeHTTP(statusWriter, r)
+		duration := time.Since(start)
+		slog.Info(r.Method,
+			"path", r.URL.Path,
+			"status", statusWriter.statusCode,
+			"duration", duration,
+			"client_ip", r.RemoteAddr,
+			"user_agent", r.UserAgent(),
+		)
+	})
 }
