@@ -365,7 +365,7 @@ func (app *App) handleMonthlyStats(w http.ResponseWriter, r *http.Request) {
 
 	// Get the past year of monthly entrance data
 	oneYearAgo := time.Now().AddDate(-1, 0, 0)
-	
+
 	query := `
 		SELECT 
 			CONCAT(YEAR(timestamp), "-", LPAD(MONTH(timestamp), 2, '0')) as month,
@@ -375,7 +375,7 @@ func (app *App) handleMonthlyStats(w http.ResponseWriter, r *http.Request) {
 		GROUP BY YEAR(timestamp), MONTH(timestamp)
 		ORDER BY YEAR(timestamp), MONTH(timestamp)
 	`
-	
+
 	rows, err := app.db.Query(query, oneYearAgo)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -417,7 +417,7 @@ func (app *App) handleRecentStats(w http.ResponseWriter, r *http.Request) {
 
 	// Get the past 3 hours of data
 	threeHoursAgo := time.Now().Add(-3 * time.Hour)
-	
+
 	query := `
 		SELECT 
 			COALESCE(SUM(CASE WHEN incoming_diff > 0 THEN incoming_diff ELSE 0 END), 0) as total_entrances,
@@ -425,7 +425,7 @@ func (app *App) handleRecentStats(w http.ResponseWriter, r *http.Request) {
 		FROM lib_gate_counts 
 		WHERE timestamp >= ?
 	`
-	
+
 	var stats RecentStats
 	err := app.db.QueryRow(query, threeHoursAgo).Scan(&stats.TotalEntrances, &stats.TotalExits)
 	if err != nil {
