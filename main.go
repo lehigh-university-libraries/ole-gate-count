@@ -27,6 +27,16 @@ type GateCount struct {
 	OutgoingDiff         int       `json:"outgoing_diff"`
 }
 
+type MonthlyStats struct {
+	Month     string `json:"month"`
+	Entrances int    `json:"entrances"`
+}
+
+type RecentStats struct {
+	TotalEntrances int `json:"total_entrances"`
+	TotalExits     int `json:"total_exits"`
+}
+
 type GateXMLResponse struct {
 	Count0 int `xml:"count0"`
 	Count1 int `xml:"count1"`
@@ -78,6 +88,8 @@ func main() {
 
 	mux.HandleFunc(scriptName+"/", app.handleIndex)
 	mux.HandleFunc(scriptName+"/query", app.handleQuery)
+	mux.HandleFunc(scriptName+"/monthly_stats", app.handleMonthlyStats)
+	mux.HandleFunc(scriptName+"/recent_stats", app.handleRecentStats)
 	mux.HandleFunc(scriptName+"/download_csv", app.handleDownloadCSV)
 
 	// Apply logging middleware
@@ -342,6 +354,97 @@ func (app *App) handleDownloadCSV(w http.ResponseWriter, r *http.Request) {
 			slog.Error("Failed to write CSV line", "error", err)
 			return
 		}
+	}
+}
+
+func (app *App) handleMonthlyStats(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Get the past year of monthly entrance data
+	oneYearAgo := time.Now().AddDate(-1, 0, 0)
+	
+	query := `
+		SELECT 
+			CONCAT(YEAR(timestamp), "-", LPAD(MONTH(timestamp), 2, '0')) as month,
+			SUM(incoming_diff) as total_entrances
+		FROM lib_gate_counts 
+		WHERE timestamp >= ? AND incoming_diff > 0
+		GROUP BY YEAR(timestamp), MONTH(timestamp)
+		ORDER BY YEAR(timestamp), MONTH(timestamp)
+	`
+	
+	rows, err := app.db.Query(query, oneYearAgo)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		if err := json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"error":   err.Error(),
+		}); err != nil {
+			slog.Error("Failed to encode JSON response", "error", err)
+		}
+		return
+	}
+	defer rows.Close()
+
+	var results []MonthlyStats
+	for rows.Next() {
+		var stat MonthlyStats
+		err := rows.Scan(&stat.Month, &stat.Entrances)
+		if err != nil {
+			slog.Error("Failed to scan monthly stats", "error", err)
+			continue
+		}
+		results = append(results, stat)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"data":    results,
+	}); err != nil {
+		slog.Error("Failed to encode JSON response", "error", err)
+	}
+}
+
+func (app *App) handleRecentStats(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Get the past 3 hours of data
+	threeHoursAgo := time.Now().Add(-3 * time.Hour)
+	
+	query := `
+		SELECT 
+			COALESCE(SUM(CASE WHEN incoming_diff > 0 THEN incoming_diff ELSE 0 END), 0) as total_entrances,
+			COALESCE(SUM(CASE WHEN outgoing_diff > 0 THEN outgoing_diff ELSE 0 END), 0) as total_exits
+		FROM lib_gate_counts 
+		WHERE timestamp >= ?
+	`
+	
+	var stats RecentStats
+	err := app.db.QueryRow(query, threeHoursAgo).Scan(&stats.TotalEntrances, &stats.TotalExits)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		if err := json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"error":   err.Error(),
+		}); err != nil {
+			slog.Error("Failed to encode JSON response", "error", err)
+		}
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"data":    stats,
+	}); err != nil {
+		slog.Error("Failed to encode JSON response", "error", err)
 	}
 }
 
