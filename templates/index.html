@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Gate Count Query Interface</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
       body {
         font-family: Arial, sans-serif;
@@ -121,11 +122,88 @@
         border: 1px solid #ddd;
         border-radius: 4px;
       }
+      .chart-container {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        margin-bottom: 30px;
+      }
+      .chart-wrapper {
+        position: relative;
+        height: 300px;
+        margin-top: 20px;
+      }
+      .stats-container {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        margin-bottom: 30px;
+      }
+      .stats-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 30px;
+        margin-top: 20px;
+      }
+      .stat-item {
+        text-align: center;
+        padding: 20px;
+        border-radius: 6px;
+        border: 2px solid #e9ecef;
+      }
+      .stat-number {
+        font-size: 2.5em;
+        font-weight: bold;
+        margin-bottom: 10px;
+        color: #495057;
+      }
+      .stat-label {
+        font-size: 1.1em;
+        color: #6c757d;
+        font-weight: 500;
+      }
+      .entrances {
+        border-color: #28a745;
+        background-color: #f8fff9;
+      }
+      .entrances .stat-number {
+        color: #28a745;
+      }
+      .exits {
+        border-color: #dc3545;
+        background-color: #fff8f8;
+      }
+      .exits .stat-number {
+        color: #dc3545;
+      }
     </style>
   </head>
   <body>
     <div class="container">
       <h1>Gate Count Query Interface</h1>
+      
+      <div class="chart-container">
+        <h2>Monthly Entrances - Past Year</h2>
+        <div class="chart-wrapper">
+          <canvas id="monthlyChart"></canvas>
+        </div>
+      </div>
+
+      <div class="stats-container">
+        <h2>Past 3 Hours Activity</h2>
+        <div class="stats-grid">
+          <div class="stat-item entrances">
+            <div class="stat-number" id="entrancesCount">--</div>
+            <div class="stat-label">People Entered</div>
+          </div>
+          <div class="stat-item exits">
+            <div class="stat-number" id="exitsCount">--</div>
+            <div class="stat-label">People Exited</div>
+          </div>
+        </div>
+      </div>
 
       <form id="queryForm">
         <div class="form-group">
@@ -206,6 +284,11 @@
       const downloadCsv = document.getElementById("downloadCsv");
 
       let currentQueryData = null;
+      let monthlyChart = null;
+
+      // Load monthly chart and recent stats on page load
+      loadMonthlyChart();
+      loadRecentStats();
 
       // Set default dates
       const today = new Date();
@@ -301,9 +384,10 @@
 
         data.forEach((row) => {
           const tr = document.createElement("tr");
+          const formattedTimestamp = formatTimestamp(row.timestamp);
           tr.innerHTML =
             "<td>" +
-            row.timestamp +
+            formattedTimestamp +
             "</td><td>" +
             row.gate_name +
             "</td><td>" +
@@ -324,6 +408,115 @@
 
         results.style.display = "block";
         downloadCsv.disabled = false;
+      }
+
+      async function loadMonthlyChart() {
+        try {
+          const response = await fetch(scriptName + "/monthly_stats");
+          const data = await response.json();
+          
+          if (data.success && data.data) {
+            renderChart(data.data);
+          } else {
+            console.error('Failed to load monthly stats:', data.error);
+          }
+        } catch (err) {
+          console.error('Error loading monthly chart:', err);
+        }
+      }
+
+      function renderChart(monthlyData) {
+        const ctx = document.getElementById('monthlyChart').getContext('2d');
+        
+        // Format month labels to be more readable (e.g., "2024-09" becomes "Sep 2024")
+        const labels = monthlyData.map(item => {
+          const [year, month] = item.month.split('-');
+          const date = new Date(year, month - 1);
+          return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+        });
+        
+        const entrances = monthlyData.map(item => item.entrances);
+        
+        if (monthlyChart) {
+          monthlyChart.destroy();
+        }
+        
+        monthlyChart = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: 'Monthly Entrances',
+              data: entrances,
+              borderColor: '#007bff',
+              backgroundColor: 'rgba(0, 123, 255, 0.1)',
+              borderWidth: 2,
+              fill: true,
+              tension: 0.1
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: {
+                  callback: function(value) {
+                    return value.toLocaleString();
+                  }
+                }
+              }
+            },
+            plugins: {
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    return 'Entrances: ' + context.parsed.y.toLocaleString();
+                  }
+                }
+              }
+            }
+          }
+        });
+      }
+
+      async function loadRecentStats() {
+        try {
+          const response = await fetch(scriptName + "/recent_stats");
+          const data = await response.json();
+          
+          if (data.success && data.data) {
+            updateRecentStats(data.data);
+          } else {
+            console.error('Failed to load recent stats:', data.error);
+            document.getElementById('entrancesCount').textContent = 'Error';
+            document.getElementById('exitsCount').textContent = 'Error';
+          }
+        } catch (err) {
+          console.error('Error loading recent stats:', err);
+          document.getElementById('entrancesCount').textContent = 'Error';
+          document.getElementById('exitsCount').textContent = 'Error';
+        }
+      }
+
+      function updateRecentStats(stats) {
+        document.getElementById('entrancesCount').textContent = stats.total_entrances.toLocaleString();
+        document.getElementById('exitsCount').textContent = stats.total_exits.toLocaleString();
+      }
+
+      function formatTimestamp(timestamp) {
+        const date = new Date(timestamp);
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        let hours = date.getHours();
+        const ampm = hours >= 12 ? 'pm' : 'am';
+        hours = hours % 12;
+        hours = hours ? hours : 12; // the hour '0' should be '12'
+        const hoursStr = String(hours).padStart(2, '0');
+        
+        return `${year}-${month}-${day} ${hoursStr}:00${ampm}`;
       }
 
       function showError(message) {
