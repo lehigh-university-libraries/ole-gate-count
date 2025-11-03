@@ -171,16 +171,16 @@ func (app *App) handleHealth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check for recent entries (last hour)
+	// Check for recent entries (last 90 minutes to account for DST transitions)
 	var count int
 	var latestEntry sql.NullTime
 
-	oneHourAgo := time.Now().Add(-time.Hour)
+	recentThreshold := time.Now().Add(-90 * time.Minute)
 	err := app.db.QueryRow(`
-		SELECT COUNT(*) as recent_count, MAX(timestamp) as latest_entry 
-		FROM lib_gate_counts 
+		SELECT COUNT(*) as recent_count, MAX(timestamp) as latest_entry
+		FROM lib_gate_counts
 		WHERE timestamp >= ?
-	`, oneHourAgo).Scan(&count, &latestEntry)
+	`, recentThreshold).Scan(&count, &latestEntry)
 
 	if err != nil {
 		w.WriteHeader(http.StatusServiceUnavailable)
