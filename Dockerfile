@@ -12,9 +12,9 @@ FROM alpine:3.22
 
 ARG \
   # renovate: datasource=repology depName=alpine_3_22/ca-certificates
-  CA_CERTIFICATES_VERSION="20250619-r0" \
+  CA_CERTIFICATES_VERSION="20250911-r0" \
   # renovate: datasource=repology depName=alpine_3_22/curl
-  CURL_VERSION="8.14.1-r1" \
+  CURL_VERSION="8.14.1-r2" \
   # renovate: datasource=repology depName=alpine_3_22/jq
   JQ_VERSION="1.8.0-r0" \
   # renovate: datasource=repology depName=alpine_3_22/tzdata
