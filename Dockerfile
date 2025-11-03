@@ -1,4 +1,4 @@
-FROM golang:1.25-alpine3.22 AS builder
+FROM golang:1.25-alpine3.22@sha256:aee43c3ccbf24fdffb7295693b6e33b21e01baec1b2a55acc351fde345e9ec34 AS builder
 
 WORKDIR /app
 
@@ -8,7 +8,7 @@ RUN go mod download
 COPY main.go ./
 RUN CGO_ENABLED=0 GOOS=linux go build -o ole-gate-count main.go
 
-FROM alpine:3.22
+FROM alpine:3.22@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412
 
 ARG \
   # renovate: datasource=repology depName=alpine_3_22/ca-certificates
