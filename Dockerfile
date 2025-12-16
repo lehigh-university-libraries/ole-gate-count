@@ -1,4 +1,4 @@
-FROM golang:1.25-alpine3.22@sha256:d3f0cf7723f3429e3f9ed846243970b20a2de7bae6a5b66fc5914e228d831bbb AS builder
+FROM golang:1.25-alpine3.22@sha256:3587db7cc96576822c606d119729370dbf581931c5f43ac6d3fa03ab4ed85a10 AS builder
 
 WORKDIR /app
 
@@ -8,17 +8,17 @@ RUN go mod download
 COPY main.go ./
 RUN CGO_ENABLED=0 GOOS=linux go build -o ole-gate-count main.go
 
-FROM alpine:3.22@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412
+FROM alpine:3.23@sha256:51183f2cfa6320055da30872f211093f9ff1d3cf06f39a0bdb212314c5dc7375
 
 ARG \
-  # renovate: datasource=repology depName=alpine_3_22/ca-certificates
-  CA_CERTIFICATES_VERSION="20250911-r0" \
-  # renovate: datasource=repology depName=alpine_3_22/curl
-  CURL_VERSION="8.14.1-r2" \
-  # renovate: datasource=repology depName=alpine_3_22/jq
-  JQ_VERSION="1.8.0-r0" \
-  # renovate: datasource=repology depName=alpine_3_22/tzdata
-  TZDATA_VERSION="2025b-r0"
+  # renovate: datasource=repology depName=alpine_3_23/ca-certificates
+  CA_CERTIFICATES_VERSION="20251003-r0" \
+  # renovate: datasource=repology depName=alpine_3_23/curl
+  CURL_VERSION="8.17.0-r1" \
+  # renovate: datasource=repology depName=alpine_3_23/jq
+  JQ_VERSION="1.8.1-r0" \
+  # renovate: datasource=repology depName=alpine_3_23/tzdata
+  TZDATA_VERSION="2025c-r0"
 
 RUN apk update && \
   apk --no-cache add \
