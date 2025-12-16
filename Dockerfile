@@ -11,14 +11,14 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o ole-gate-count main.go
 FROM alpine:3.23@sha256:51183f2cfa6320055da30872f211093f9ff1d3cf06f39a0bdb212314c5dc7375
 
 ARG \
-  # renovate: datasource=repology depName=alpine_3_22/ca-certificates
-  CA_CERTIFICATES_VERSION="20250911-r0" \
-  # renovate: datasource=repology depName=alpine_3_22/curl
-  CURL_VERSION="8.14.1-r2" \
-  # renovate: datasource=repology depName=alpine_3_22/jq
-  JQ_VERSION="1.8.0-r0" \
-  # renovate: datasource=repology depName=alpine_3_22/tzdata
-  TZDATA_VERSION="2025b-r0"
+  # renovate: datasource=repology depName=alpine_3_23/ca-certificates
+  CA_CERTIFICATES_VERSION="20251003-r0" \
+  # renovate: datasource=repology depName=alpine_3_23/curl
+  CURL_VERSION="8.17.0-r1" \
+  # renovate: datasource=repology depName=alpine_3_23/jq
+  JQ_VERSION="1.8.1-r0" \
+  # renovate: datasource=repology depName=alpine_3_23/tzdata
+  TZDATA_VERSION="2025c-r0"
 
 RUN apk update && \
   apk --no-cache add \
