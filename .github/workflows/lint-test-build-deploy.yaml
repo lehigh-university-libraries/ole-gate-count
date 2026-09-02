@@ -9,16 +9,16 @@ jobs:
   lint-test:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
-      - uses: hadolint/hadolint-action@2332a7b74a6de0dda2e2221d575162eba76ba5e5 # v3.3.0
+      - uses: hadolint/hadolint-action@06be81baf89a55ffd0e24b8f04a4185738dd3387 # v3.5.0
 
-      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
           go-version: ">=1.25.0"
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9
         with:
           version: latest
 
@@ -30,7 +30,7 @@ jobs:
 
   build-push:
     needs: [lint-test]
-    uses: lehigh-university-libraries/gha/.github/workflows/build-push-ghcr.yaml@60c5d3a7a8f89290bbe0db056a0116855f59bb6c # main
+    uses: lehigh-university-libraries/gha/.github/workflows/build-push-ghcr.yaml@e26d86abfbe300be4d93570b666651c11471995b # main
     permissions:
       contents: read
       packages: write
@@ -38,7 +38,7 @@ jobs:
 
   deploy-test:
     needs: [build-push]
-    uses: lehigh-university-libraries/gha/.github/workflows/linderman-deploy.yaml@60c5d3a7a8f89290bbe0db056a0116855f59bb6c # main
+    uses: lehigh-university-libraries/gha/.github/workflows/linderman-deploy.yaml@e26d86abfbe300be4d93570b666651c11471995b # main
     with:
       url: https://apps-test.lib.lehigh.edu/_rollout
     secrets: inherit
@@ -49,7 +49,7 @@ jobs:
   deploy:
     needs: [deploy-test]
     if: github.ref == 'refs/heads/main'
-    uses: lehigh-university-libraries/gha/.github/workflows/linderman-deploy.yaml@60c5d3a7a8f89290bbe0db056a0116855f59bb6c # main
+    uses: lehigh-university-libraries/gha/.github/workflows/linderman-deploy.yaml@e26d86abfbe300be4d93570b666651c11471995b # main
     with:
       url: https://apps-prod.lib.lehigh.edu/_rollout
     secrets: inherit
